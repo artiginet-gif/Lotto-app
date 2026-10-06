@@ -5,6 +5,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,8 +30,27 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Prepare APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk LottoLabMobile-1.1.apk
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: LottoLabMobile-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: LottoLabMobile-1.1.apk
+
+      - name: Create or update Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="lotto-lab-v1.1"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release già presente"
+          else
+            gh release create "$TAG" \
+              --title "Lotto Lab Mobile 1.1" \
+              --notes "Versione 1.1 - aggiornamento automatico estrazioni e tutte le ruote."
+          fi
+
+          gh release upload "$TAG" LottoLabMobile-1.1.apk --clobber

@@ -42,26 +42,24 @@ jobs:
         run: gradle assembleRelease --stacktrace
 
       - name: Prepare APK
-        run: cp app/build/outputs/apk/release/app-release.apk LottoLabMobile-1.3.apk
+        run: cp app/build/outputs/apk/release/app-release.apk LottoLabMobile-1.4.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LottoLabMobile-1.3-apk
-          path: LottoLabMobile-1.3.apk
+          name: LottoLabMobile-1.4-apk
+          path: LottoLabMobile-1.4.apk
 
       - name: Create or update Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="lotto-lab-v1.3"
+          TAG="lotto-lab-v1.4"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release già presente"
           else
-            gh release create "$TAG" \
-              --title "Lotto Lab Mobile 1.3" \
-              --notes "Versione 1.3: nuova grafica, ultime estrazioni, Sistema 8 e SuperEnalotto."
+            gh release create "$TAG"               --title "Lotto Lab Mobile 1.4"               --notes "Versione 1.4: nuova home a sezioni separate per Lotto, SuperEnalotto, statistiche, ultime estrazioni e storico."
           fi
 
-          gh release upload "$TAG" LottoLabMobile-1.3.apk --clobber
+          gh release upload "$TAG" LottoLabMobile-1.4.apk --clobber

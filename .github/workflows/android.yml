@@ -27,30 +27,41 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+      - name: Restore signing key
+        env:
+          LOTTO_KEYSTORE_BASE64: ${{ secrets.LOTTO_KEYSTORE_BASE64 }}
+        run: |
+          echo "$LOTTO_KEYSTORE_BASE64" | base64 --decode > app/lotto-lab-release.jks
+
+      - name: Build signed release APK
+        env:
+          LOTTO_KEYSTORE_PATH: lotto-lab-release.jks
+          LOTTO_KEYSTORE_PASSWORD: ${{ secrets.LOTTO_KEYSTORE_PASSWORD }}
+          LOTTO_KEY_ALIAS: ${{ secrets.LOTTO_KEY_ALIAS }}
+          LOTTO_KEY_PASSWORD: ${{ secrets.LOTTO_KEY_PASSWORD }}
+        run: gradle assembleRelease --stacktrace
 
       - name: Prepare APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk LottoLabMobile-1.1.apk
+        run: cp app/build/outputs/apk/release/app-release.apk LottoLabMobile-1.2.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LottoLabMobile-debug-apk
-          path: LottoLabMobile-1.1.apk
+          name: LottoLabMobile-1.2-apk
+          path: LottoLabMobile-1.2.apk
 
       - name: Create or update Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="lotto-lab-v1.1"
+          TAG="lotto-lab-v1.2"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release già presente"
           else
             gh release create "$TAG" \
-              --title "Lotto Lab Mobile 1.1" \
-              --notes "Versione 1.1 - aggiornamento automatico estrazioni e tutte le ruote."
+              --title "Lotto Lab Mobile 1.2" \
+              --notes "Versione 1.2 firmata con chiave stabile."
           fi
 
-          gh release upload "$TAG" LottoLabMobile-1.1.apk --clobber
+          gh release upload "$TAG" LottoLabMobile-1.2.apk --clobber

@@ -34,8 +34,8 @@ public class MainActivity extends Activity {
 
     LinearLayout page;
     Spinner wheelSpinner;
-    TextView updateText,statsText,historyText,latestTitle;
-    LinearLayout latestContainer,lottoContainer,system8Container,superContainer;
+    TextView updateText,statsText,latestTitle;
+    LinearLayout latestContainer,lottoContainer,system8Container,superContainer,historyContainer;
     EditText dateInput;
     EditText[] numberInputs=new EditText[5];
     SharedPreferences prefs;
@@ -56,6 +56,11 @@ public class MainActivity extends Activity {
         page=new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(16),dp(18),dp(16),dp(32));
+        page.setOnApplyWindowInsetsListener((v,insets)->{
+            int top=insets.getSystemWindowInsetTop();
+            page.setPadding(dp(16),top+dp(14),dp(16),dp(32));
+            return insets;
+        });
         scroll.addView(page);
         setContentView(scroll);
     }
@@ -63,7 +68,7 @@ public class MainActivity extends Activity {
     void showHome(){
         page.removeAllViews();
         TextView title=text("Lotto Lab",30,true); title.setTextColor(TEXT); page.addView(title);
-        TextView ver=text("Mobile 1.4",13,true); ver.setTextColor(PURPLE); page.addView(ver);
+        TextView ver=text("Mobile 1.5",13,true); ver.setTextColor(PURPLE); page.addView(ver);
         TextView sub=text("Scegli la sezione che vuoi usare.",15,false); sub.setTextColor(MUTED); sub.setPadding(0,0,0,dp(14)); page.addView(sub);
 
         LinearLayout hero=card();
@@ -88,7 +93,9 @@ public class MainActivity extends Activity {
     void addHeader(String title){
         LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL);
         Button back=secondary("← Indietro"); back.setOnClickListener(v->showHome());
-        row.addView(back,new LinearLayout.LayoutParams(dp(120),dp(48)));
+        LinearLayout.LayoutParams backLp=new LinearLayout.LayoutParams(dp(136),dp(56));
+        backLp.setMargins(0,dp(4),0,dp(6));
+        row.addView(back,backLp);
         TextView t=text(title,24,true); t.setTextColor(TEXT); t.setPadding(dp(12),0,0,0);
         row.addView(t,new LinearLayout.LayoutParams(0,-2,1));
         page.addView(row);
@@ -153,7 +160,7 @@ public class MainActivity extends Activity {
     void showHistory(){
         page.removeAllViews(); addHeader("Storico");
         LinearLayout h=card(); h.addView(cardTitle("Combinazioni generate"));
-        historyText=text("",13,false); historyText.setTextColor(MUTED); h.addView(historyText);
+        historyContainer=new LinearLayout(this); historyContainer.setOrientation(LinearLayout.VERTICAL); h.addView(historyContainer);
         Button hc=secondary("Azzera storico"); hc.setOnClickListener(v->{history.clear();saveHistory();refreshHistory();}); h.addView(hc); page.addView(h);
         refreshHistory();
 
@@ -214,7 +221,7 @@ public class MainActivity extends Activity {
             HttpURLConnection c=null;
             try{
                 c=(HttpURLConnection)new URL(ARCHIVE_URL).openConnection();
-                c.setConnectTimeout(15000);c.setReadTimeout(30000);c.setRequestProperty("User-Agent","LottoLabMobile/1.4");c.connect();
+                c.setConnectTimeout(15000);c.setReadTimeout(30000);c.setRequestProperty("User-Agent","LottoLabMobile/1.5");c.connect();
                 if(c.getResponseCode()!=200)throw new Exception("Errore HTTP "+c.getResponseCode());
                 ZipInputStream zip=new ZipInputStream(c.getInputStream());ZipEntry e;List<Draw> online=new ArrayList<>();int count=0;
                 while((e=zip.getNextEntry())!=null){if(e.isDirectory())continue;BufferedReader br=new BufferedReader(new InputStreamReader(zip,StandardCharsets.UTF_8));String line;while((line=br.readLine())!=null){Draw d=parseOnlineLine(line);if(d!=null){online.add(d);count++;}}}
@@ -227,7 +234,7 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    void refreshVisible(){refreshUpdateText(); if(latestContainer!=null&&latestContainer.getParent()!=null)refreshLatest(); if(statsText!=null&&statsText.getParent()!=null)refreshStats(); if(historyText!=null&&historyText.getParent()!=null)refreshHistory();}
+    void refreshVisible(){refreshUpdateText(); if(latestContainer!=null&&latestContainer.getParent()!=null)refreshLatest(); if(statsText!=null&&statsText.getParent()!=null)refreshStats(); if(historyContainer!=null&&historyContainer.getParent()!=null)refreshHistory();}
 
     Draw parseOnlineLine(String raw){
         if(raw==null)return null;raw=raw.trim();if(raw.isEmpty())return null;String[] p=raw.split("\\s+");if(p.length<7)return null;
@@ -317,8 +324,24 @@ public class MainActivity extends Activity {
     List<Integer> randomUnique(int count){List<Integer> a=new ArrayList<>();for(int n=1;n<=90;n++)a.add(n);Collections.shuffle(a);List<Integer> o=new ArrayList<>(a.subList(0,count));Collections.sort(o);return o;}
     List<Integer> balancedSuper(){for(int k=0;k<500;k++){List<Integer>x=randomUnique(6);int even=0,low=0;Set<Integer>dec=new HashSet<>();for(int n:x){if(n%2==0)even++;if(n<=45)low++;dec.add((n-1)/10);}if(even>=2&&even<=4&&low>=2&&low<=4&&dec.size()>=4)return x;}return randomUnique(6);}
     String join(List<Integer>x){StringBuilder s=new StringBuilder();for(int i=0;i<x.size();i++){if(i>0)s.append("  ");s.append(String.format(Locale.ITALY,"%02d",x.get(i)));}return s.toString();}
-    void addHistory(String label,List<Integer>x){String stamp=new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ITALY).format(new Date());history.add(0,stamp+" · "+label+" · "+join(x));while(history.size()>50)history.remove(history.size()-1);saveHistory();if(historyText!=null&&historyText.getParent()!=null)refreshHistory();}
-    void refreshHistory(){if(historyText==null)return;if(history.isEmpty()){historyText.setText("Nessuna combinazione generata.");return;}StringBuilder s=new StringBuilder();for(int i=0;i<Math.min(20,history.size());i++){if(i>0)s.append("\n");s.append(history.get(i));}historyText.setText(s.toString());}
+    void addHistory(String label,List<Integer>x){String stamp=new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ITALY).format(new Date());history.add(0,stamp+" · "+label+" · "+join(x));while(history.size()>50)history.remove(history.size()-1);saveHistory();if(historyContainer!=null&&historyContainer.getParent()!=null)refreshHistory();}
+    void refreshHistory(){
+        if(historyContainer==null)return;
+        historyContainer.removeAllViews();
+        if(history.isEmpty()){
+            TextView empty=text("Nessuna combinazione generata.",13,false); empty.setTextColor(MUTED); historyContainer.addView(empty); return;
+        }
+        for(int i=0;i<Math.min(20,history.size());i++){
+            TextView item=text(history.get(i),14,false);
+            item.setTextColor(TEXT);
+            item.setPadding(dp(14),dp(12),dp(14),dp(12));
+            item.setBackground(bg(PURPLE_LIGHT,14));
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+            lp.setMargins(0,dp(5),0,dp(5));
+            item.setLayoutParams(lp);
+            historyContainer.addView(item);
+        }
+    }
 
     void addManualDraw(){
         if(wheelSpinner==null)return;
